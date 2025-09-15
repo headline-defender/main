@@ -1,0 +1,12 @@
+アイスボックス,Icebox
+アセント,Ascent
+アビス,Abyss
+カロード,Corrode
+サンセット,Sunset
+スプリット,Split
+バインド,Bind
+フラクチャー,Fracture
+ブリーズ,Breeze
+ヘイブン,Haven
+パール,Pearl
+ロータス,Lotus

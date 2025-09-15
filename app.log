@@ -1,0 +1,12 @@
+nohup: ignoring input
+[2025-08-24 14:31:03 +0900] [399589] [INFO] Starting gunicorn 23.0.0
+[2025-08-24 14:31:03 +0900] [399589] [INFO] Listening at: http://0.0.0.0:5000 (399589)
+[2025-08-24 14:31:03 +0900] [399589] [INFO] Using worker: gthread
+[2025-08-24 14:31:03 +0900] [399592] [INFO] Booting worker with pid: 399592
+[2025-08-24 14:31:03 +0900] [399593] [INFO] Booting worker with pid: 399593
+[2025-08-24 14:31:08 +0900] [399589] [INFO] Handling signal: hup
+[2025-08-24 14:31:08 +0900] [399589] [INFO] Hang up: Master
+[2025-08-24 14:31:08 +0900] [399589] [ERROR] Worker (pid:399592) was sent SIGHUP!
+[2025-08-24 14:31:08 +0900] [399589] [ERROR] Worker (pid:399593) was sent SIGHUP!
+[2025-08-24 14:31:08 +0900] [399659] [INFO] Booting worker with pid: 399659
+[2025-08-24 14:31:08 +0900] [399660] [INFO] Booting worker with pid: 399660

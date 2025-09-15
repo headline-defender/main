@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="UTF-8">
+	<title>アップロード - 座標指定付き</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<style>
+		body {
+			margin: 0;
+			padding: 20px;
+			font-family: sans-serif;
+			background: #1c1c1c;
+			color: white;
+		}
+
+		/* コンテナを flex でセンター配置 */
+		.center-container {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			/* 横方向中央揃え */
+			justify-content: center;
+			/* 縦方向中央揃え */
+			min-height: 60vh;
+		}
+
+		/* マップ画像クリック用エリア */
+		#mapContainer {
+			position: relative;
+			cursor: pointer;
+			/* ポインターに統一 */
+			margin-bottom: 20px;
+		}
+
+		#mapImage {
+			/* 幅・高さは固定せず自然なサイズ */
+			display: block;
+		}
+
+		#marker {
+			position: absolute;
+			width: 10px;
+			height: 10px;
+			background: red;
+			border-radius: 50%;
+			transform: translate(-50%, -50%);
+			display: none;
+			pointer-events: none;
+		}
+
+		form {
+			background: #2b2b2b;
+			padding: 15px;
+			border-radius: 6px;
+			max-width: 400px;
+			width: 100%;
+		}
+
+		form input,
+		form select,
+		form button {
+			width: 100%;
+			margin-bottom: 10px;
+			padding: 6px;
+			border: none;
+			border-radius: 4px;
+		}
+
+		form button {
+			background: #ff4655;
+			color: white;
+			cursor: pointer;
+		}
+
+		form button:hover {
+			background: #e03e4a;
+		}
+
+		textarea {
+			resize: none;
+			font-size: 110%;
+			width: 380px;
+			height: 80px;
+		}
+
+		.form-check-label {
+			display: flex;
+			white-space: nowrap;
+			align-items: center;
+			margin-bottom: 15px;
+			/* 必要に応じて調整 */
+			margin-right: 200px;
+			/* チェックボックスとラベルの間隔を調整 */
+		}
+
+		.form-check-input {
+			margin-bottom: 0px;
+			margin-right: 1px;
+			/* チェックボックスとラベルの間隔を調整 */
+			white-space: nowrap;
+		}
+
+		.required {
+			color: red;
+			font-weight: bold;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="center-container">
+		<h1>定点アップロード画面</h1>
+		<button type="button" class="btn btn-primary" style="margin-left: 80%;" onclick="location.href='/'">
+			定点一覧へ
+		</button>
+		<!-- マップ選択用エリア -->
+		<div id="mapSelector">
+			<label>マップ選択 <span class="required">  ※必須</span>
+				<select id="mapSelect" name="mapSelect" class="form-select" onchange="changeMap()" required>
+					<option value="">マップ名</option>
+					{% for map in maps %}
+					<option value="{{ map.value }}">{{ map.label }}</option>
+					{% endfor %}
+				</select>
+			</label>
+		</div>
+		<br>
+		<!-- マップ表示とマーカー用エリア -->
+		<div id="mapContainer">
+			<img id="mapImage" src="" onclick="getCoords(event)">
+			<div id="marker"></div>
+		</div>
+
+		<!-- アップロードフォーム -->
+		<form method="POST" enctype="multipart/form-data">
+			<input type="hidden" name="map_name" id="map_name">
+			<input type="hidden" name="marker_x" id="markerX" placeholder="X座標" readonly required>
+			<input type="hidden" name="marker_y" id="markerY" placeholder="Y座標" readonly required>
+			<!-- 以下、他の入力項目も追加 -->
+			<div class="mb-3">
+				<select id="agent_name" name="agent_name" class="form-select" required>
+					<option value="">エージェント名</option>
+					{% for agent in agents %}
+					<option value="{{ agent.value }}">{{ agent.label }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<input type="text" name="site" placeholder="着地点（例: Aサイト）" required>
+			<textarea name="description" placeholder="説明文" rows="3" cols="40" required></textarea>
+			<input type="file" name="file" accept=".png,.jpg,.jpeg" required>
+			<div class="mb-3">
+				<label class="form-check-label" for="showStand">
+					<input type="checkbox" name="stand_check" id="showStand" class="form-check-input">
+					立ち位置画像を追加する
+				</label>
+			</div>
+			<div id="standupForm" style="display: none; margin-top: 10px;">
+				<textarea name="stand_description" placeholder="説明文" rows="3" cols="40"></textarea>
+				<input type="file" name="stand_file" accept=".jpg,.jpeg,.png">
+			</div>
+			<button type="submit">登録</button>
+		</form>
+	</div>
+
+	<script>
+		document.getElementById('mapSelect').addEventListener('change', function () {
+			const sel = this.value;
+			document.getElementById('map_name').value = sel;
+		});
+		const checkbox = document.getElementById('showStand');
+		const formDiv = document.getElementById('standupForm');
+		const standTextarea = formDiv.querySelector('textarea');
+		const standFile = formDiv.querySelector('input[type="file"]');
+		checkbox.addEventListener('change', () => {
+			formDiv.style.display = checkbox.checked ? 'block' : 'none';
+			standTextarea.required = checkbox.checked;
+			standFile.required = checkbox.checked;
+		});
+		function changeMap() {
+			const mapFile = document.getElementById('mapSelect').value;
+			const img = document.getElementById('mapImage');
+			document.getElementById('mapImage').src = mapFile ? '/static/maps/' + mapFile + '.png' : '';
+			document.getElementById('markerX').value = '';
+			document.getElementById('markerY').value = '';
+		}
+
+		function getCoords(event) {
+			const img = event.target;
+			const rect = img.getBoundingClientRect();
+
+			const xRatio = ((event.clientX - rect.left) / img.width) * 100;
+			const yRatio = ((event.clientY - rect.top) / img.height) * 100;
+
+			const marker = document.getElementById('marker');
+			marker.style.left = (event.clientX - rect.left) + 'px';
+			marker.style.top = (event.clientY - rect.top) + 'px';
+			marker.style.display = 'block';
+
+			document.getElementById('markerX').value = xRatio.toFixed(3);
+			document.getElementById('markerY').value = yRatio.toFixed(3);
+		}
+	</script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
