@@ -24,15 +24,15 @@ app.secret_key = secrets.token_hex(16)
 
 db = SQLAlchemy(app)
 
-agent_dict = utl.read_conf("/working/static/conf/agent_list.txt")
-map_dict = utl.read_conf("/working/static/conf/map_list.txt")
+agent_dict = utl.read_conf(os.path.join("static","conf","agent_list.txt"))
+map_dict = utl.read_conf(os.path.join("static","conf","map_list.txt"))
 
 
 
 # データベース接続
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect("/working/DB/app.db")
+        g.db = sqlite3.connect(os.path.join("DB","app.db"))
     return g.db
 
 
@@ -175,7 +175,7 @@ def upload_confirm():
             moved_path = shutil.move(image_src, app.config["UPLOAD_FOLDER"])
 
             # DBへ登録
-            conn = sqlite3.connect("/working/DB/app.db")
+            conn = sqlite3.connect(os.path.join("DB","app.db"))
             c = conn.cursor()
 
             is_created = odb.create_lineups(
