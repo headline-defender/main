@@ -105,11 +105,23 @@
   <div class="container py-5 d-flex justify-content-center">
     <div class="form-container col-md-10">
       <h1 class="mb-4 text-white">条件を選んでください</h1>
+        <!-- フラッシュメッセージ -->
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="alert alert-warning" role="alert">
+              {% for message in messages %}
+                {{ message }}
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
       <form method="GET" action="/view">
         
         <!-- マップ選択 -->
         <div class="mb-3">
-          <label class="form-label">マップ</label>
+          <h3>
+            <label class="form-label">マップ</label>
+          </h3>
           <div class="select-grid" id="mapGrid">
             {% for map in maps %}
             <div class="select-item map" data-value="{{ map.value }}">
@@ -123,7 +135,9 @@
 
         <!-- エージェント選択 -->
         <div class="mb-3">
-          <label class="form-label">エージェント</label>
+          <h3>
+            <label class="form-label">エージェント</label>
+          </h3>
           <div class="select-grid" id="agentGrid">
             {% for agent in agents %}
             <div class="select-item agent" data-value="{{ agent.value }}">
