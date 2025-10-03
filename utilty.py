@@ -13,7 +13,7 @@ def read_conf(file_path):
     contents_list = data.split("\n")
 
     contents_dict = [
-        {"value": en, "label": jp, "image_path": os.path.join('static','icon',en)}
+        {"value": en, "label": jp, "image_path": os.path.join('static','icon',en,'.png')}
         for item in contents_list
         for jp,en in [item.split(",", 1)]
 ]
