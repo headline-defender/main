@@ -24,10 +24,10 @@
       color: #000000;
     }
 
-    /* 選択グリッド共通 */
+    /* グリッド共通 */
     .select-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 1rem;
     }
     .select-item {
@@ -42,12 +42,24 @@
       filter: brightness(1.2);
       transform: scale(1.05);
     }
-    .select-item img {
+    .select-item.active {
+      outline: 3px solid #22d3ee;
+      outline-offset: 0;
+      border-radius: 8px;
+    }
+
+    /* マップ専用 */
+    .select-item.map {
       width: 100%;
       height: 100px;
-      object-fit: cover;
     }
-    .select-label {
+    .select-item.map img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .select-item.map .select-label {
       position: absolute;
       bottom: 0;
       width: 100%;
@@ -56,8 +68,33 @@
       font-size: 0.9rem;
       color: #fff;
     }
-    .select-item.active {
-      outline: 3px solid #22d3ee;
+
+    /* エージェント専用 */
+    .select-item.agent {
+      width: 60px;
+      height: 60px;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .select-item.agent img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      background-color: #1e1f2f;
+      border-radius: 8px;
+      display: block;
+    }
+    .select-item.agent .select-label {
+      position: absolute;
+      bottom: -18px; /* アイコンの下に表示 */
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8rem;
+      text-align: center;
+      white-space: nowrap;
+      color: #fff;
     }
   </style>
 </head>
@@ -75,7 +112,7 @@
           <label class="form-label">マップ</label>
           <div class="select-grid" id="mapGrid">
             {% for map in maps %}
-            <div class="select-item" data-value="{{ map.value }}">
+            <div class="select-item map" data-value="{{ map.value }}">
               <img src="{{ map.image_path }}" alt="{{ map.label }}">
               <div class="select-label">{{ map.label }}</div>
             </div>
@@ -89,8 +126,8 @@
           <label class="form-label">エージェント</label>
           <div class="select-grid" id="agentGrid">
             {% for agent in agents %}
-            <div class="select-item" data-value="{{ agent.value }}">
-              <img src="{{ agent.icon_path }}" alt="{{ agent.label }}">
+            <div class="select-item agent" data-value="{{ agent.value }}">
+              <img src="{{ agent.image_path }}" alt="{{ agent.label }}">
               <div class="select-label">{{ agent.label }}</div>
             </div>
             {% endfor %}
@@ -110,9 +147,7 @@
 
       grid.querySelectorAll('.select-item').forEach(item => {
         item.addEventListener('click', () => {
-          // 他の選択を解除
           grid.querySelectorAll('.select-item').forEach(i => i.classList.remove('active'));
-          // 選択状態にする
           item.classList.add('active');
           input.value = item.dataset.value;
         });
