@@ -1,0 +1,6 @@
+# Python バイトコード
+*.pyc
+__pycache__/
+
+# SQLiteなどのデータベースファイル
+*.db
