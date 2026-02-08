@@ -23,6 +23,9 @@
 			justify-content: center;
 			/* 縦方向中央揃え */
 			min-height: 60vh;
+			width: 95%;
+			max-width: 1100px;
+			margin: 0 auto;
 		}
 
 		/* マップ画像クリック用エリア */
@@ -53,7 +56,7 @@
 			background: #2b2b2b;
 			padding: 15px;
 			border-radius: 6px;
-			max-width: 400px;
+			max-width: 900px;
 			width: 100%;
 		}
 
@@ -80,7 +83,7 @@
 		textarea {
 			resize: none;
 			font-size: 110%;
-			width: 380px;
+			width: 100%;
 			height: 80px;
 		}
 
@@ -105,6 +108,44 @@
 			color: red;
 			font-weight: bold;
 		}
+
+		/* 共通セレクトグリッド */
+		.select-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+			gap: 0.75rem;
+			align-items: center;
+		}
+		/* マップ用は横幅を大きく使う */
+		#mapGrid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 1rem;
+			max-width: 1000px;
+			margin: 0 auto;
+		}
+
+		/* エージェントは横に並べて見やすく */
+		#agentGrid {
+			grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+			gap: 0.6rem;
+			justify-items: center;
+		}
+		.select-item {
+			position: relative;
+			border-radius: 8px;
+			overflow: hidden;
+			cursor: pointer;
+			text-align: center;
+			transition: transform 0.15s, filter 0.15s;
+			padding: 6px;
+			background: #222;
+		}
+		.select-item:hover { filter: brightness(1.15); transform: translateY(-3px); }
+		.select-item.active { outline: 3px solid #22d3ee; }
+		.select-item.map img { width: 100%; height: 140px; object-fit: cover; display: block; }
+		.select-item.agent img { width: 80px; height: 80px; object-fit: contain; background: #1e1f2f; border-radius: 8px; display:block; margin: 0 auto; }
+		.select-item .select-label { font-size: 0.85rem; color: #fff; margin-top: 6px; }
 	</style>
 </head>
 
@@ -114,16 +155,17 @@
 		<button type="button" class="btn btn-primary" style="margin-left: 80%;" onclick="location.href='/'">
 			定点一覧へ
 		</button>
-		<!-- マップ選択用エリア -->
+		<!-- マップ選択用エリア（アイコン） -->
 		<div id="mapSelector">
-			<label>マップ選択 <span class="required">  ※必須</span>
-				<select id="mapSelect" name="mapSelect" class="form-select" onchange="changeMap()" required>
-					<option value="">マップ名</option>
-					{% for map in maps %}
-					<option value="{{ map.value }}">{{ map.label }}</option>
-					{% endfor %}
-				</select>
-			</label>
+			<label>マップ選択 <span class="required">  ※必須</span></label>
+			<div class="select-grid" id="mapGrid">
+				{% for map in maps %}
+				<div class="select-item map" data-value="{{ map.value }}" data-image="{{ map.detail_path }}">
+					<img src="{{ map.image_path }}" alt="{{ map.label }}">
+					<div class="select-label">{{ map.label }}</div>
+				</div>
+				{% endfor %}
+			</div>
 		</div>
 		<br>
 		<!-- マップ表示とマーカー用エリア -->
@@ -139,12 +181,15 @@
 			<input type="hidden" name="marker_y" id="markerY" placeholder="Y座標" readonly required>
 			<!-- 以下、他の入力項目も追加 -->
 			<div class="mb-3">
-				<select id="agent_name" name="agent_name" class="form-select" required>
-					<option value="">エージェント名</option>
+				<div class="select-grid" id="agentGrid">
 					{% for agent in agents %}
-					<option value="{{ agent.value }}">{{ agent.label }}</option>
+					<div class="select-item agent" data-value="{{ agent.value }}" data-image="{{ agent.image_path }}">
+						<img src="{{ agent.image_path }}" alt="{{ agent.label }}">
+						<div class="select-label">{{ agent.label }}</div>
+					</div>
 					{% endfor %}
-				</select>
+				</div>
+				<input type="hidden" name="agent_name" id="agentInput">
 			</div>
 			<input type="text" name="site" placeholder="着地点（例: Aサイト）" required>
 			<textarea name="description" placeholder="説明文" rows="3" cols="40" required></textarea>
@@ -164,10 +209,31 @@
 	</div>
 
 	<script>
-		document.getElementById('mapSelect').addEventListener('change', function () {
-			const sel = this.value;
-			document.getElementById('map_name').value = sel;
+		// 選択グリッドセットアップ
+		function setupSelection(gridId, inputId, onSelect) {
+			const grid = document.getElementById(gridId);
+			const input = document.getElementById(inputId);
+			if (!grid || !input) return;
+			grid.querySelectorAll('.select-item').forEach(item => {
+				item.addEventListener('click', () => {
+					grid.querySelectorAll('.select-item').forEach(i => i.classList.remove('active'));
+					item.classList.add('active');
+					input.value = item.dataset.value;
+					if (onSelect) onSelect(item);
+				});
+			});
+		}
+
+		// マップ選択時は地図画像を更新してマーカー座標をリセット
+		setupSelection('mapGrid', 'map_name', (item) => {
+			document.getElementById('mapImage').src = item.dataset.image || ('/static/maps/' + item.dataset.value + '.png');
+			document.getElementById('markerX').value = '';
+			document.getElementById('markerY').value = '';
 		});
+
+		// エージェント選択（hidden input に値を入れる）
+		setupSelection('agentGrid', 'agentInput');
+
 		const checkbox = document.getElementById('showStand');
 		const formDiv = document.getElementById('standupForm');
 		const standTextarea = formDiv.querySelector('textarea');
@@ -177,13 +243,6 @@
 			standTextarea.required = checkbox.checked;
 			standFile.required = checkbox.checked;
 		});
-		function changeMap() {
-			const mapFile = document.getElementById('mapSelect').value;
-			const img = document.getElementById('mapImage');
-			document.getElementById('mapImage').src = mapFile ? '/static/maps/' + mapFile + '.png' : '';
-			document.getElementById('markerX').value = '';
-			document.getElementById('markerY').value = '';
-		}
 
 		function getCoords(event) {
 			const img = event.target;

@@ -24,8 +24,8 @@ app.secret_key = secrets.token_hex(16)
 
 db = SQLAlchemy(app)
 
-agent_dict = utl.read_conf(os.path.join("static","conf","agent_list.txt"))
-map_dict = utl.read_conf(os.path.join("static","conf","map_list.txt"))
+agent_dict = utl.read_conf("/home/static/conf/agent_list.txt")
+map_dict = utl.read_conf("/home/static/conf/map_list.txt", detail=True)
 
 
 
