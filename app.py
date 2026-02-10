@@ -32,7 +32,7 @@ map_dict = utl.read_conf("/home/static/conf/map_list.txt", detail=True)
 # データベース接続
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(os.path.join("DB","app.db"))
+        g.db = sqlite3.connect("/home/DB/app.db")
     return g.db
 
 
@@ -163,6 +163,7 @@ def upload_confirm():
     if request.method == "POST":
         # 入力値の取得
         map_name = request.form["map_name"]
+        marker_type = request.form["marker_type"]
         marker_x = request.form["marker_x"]
         marker_y = request.form["marker_y"]
         agent_name = request.form["agent_name"]
@@ -175,19 +176,25 @@ def upload_confirm():
             moved_path = shutil.move(image_src, app.config["UPLOAD_FOLDER"])
 
             # DBへ登録
-            conn = sqlite3.connect(os.path.join("DB","app.db"))
+            conn = sqlite3.connect("/home/DB/app.db")
             c = conn.cursor()
 
-            is_created = odb.create_lineups(
-                c, map_name, agent_name, site, marker_x, marker_y
-            )
+            if not odb.create_lineups(c, map_name, agent_name, site, marker_type):
+                conn.rollback()
+            lineup_id = c.lastrowid
+
+            if marker_type == "vector":
+                vector_x = request.form["vector_x2"]
+                vector_y = request.form["vector_y2"]
+                is_created = odb.create_vector(
+                    c, lineup_id, marker_x, marker_y, vector_x, vector_y
+                )
+            else:
+                is_created = odb.create_point(c, lineup_id, marker_x, marker_y)
 
             # 作成操作が失敗した場合
             if not is_created:
                 conn.rollback()
-
-            # 新しく作られた定点IDを取得
-            lineup_id = c.lastrowid
 
             # 定点画像を登録
 

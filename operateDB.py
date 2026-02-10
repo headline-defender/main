@@ -1,12 +1,34 @@
 import sqlite3
 
 # 定点の情報を登録
-def create_lineups(cursor,map_name, agent_name, site_name, marker_x, marker_y):
+def create_lineups(cursor, map_name, agent_name, site_name, effect_type):
     try:
         cursor.execute("""
-        INSERT INTO lineups (map_name, agent_name, site, marker_x, marker_y)
+        INSERT INTO lineups (map_name, agent_name, site, effect_type)
+        VALUES (?, ?, ?, ?)
+        """, (map_name, agent_name, site_name, effect_type))
+        return True
+    except sqlite3.OperationalError as e:
+        print(f"OperationalError occurred: {e}")
+        return False
+
+def create_point(cursor, lineup_id, marker_x, marker_y):
+    try:
+        cursor.execute("""
+        INSERT INTO lineup_point_effects (lineup_id, x, y)
+        VALUES (?, ?, ?)
+        """, (lineup_id, marker_x, marker_y))
+        return True
+    except sqlite3.OperationalError as e:
+        print(f"OperationalError occurred: {e}")
+        return False
+
+def create_vector(cursor, lineup_id, start_x, start_y, end_x, end_y):
+    try:
+        cursor.execute("""
+        INSERT INTO lineup_vector_effects (lineup_id, start_x, start_y, end_x, end_y)
         VALUES (?, ?, ?, ?, ?)
-        """, (map_name, agent_name, site_name, marker_x, marker_y))
+        """, (lineup_id, start_x, start_y, end_x, end_y))
         return True
     except sqlite3.OperationalError as e:
         print(f"OperationalError occurred: {e}")
