@@ -47,13 +47,14 @@ def close_db(exception):
 def condition_select():
     return render_template("index.html", maps=map_dict, agents=agent_dict)
 
-@app.route('/view', methods=['GET'])
+
+@app.route("/view", methods=["GET"])
 def view():
-    map_name = request.args.get('map_name')
-    agent_name = request.args.get('agent_name')
+    map_name = request.args.get("map_name")
+    agent_name = request.args.get("agent_name")
     agent_name_jp = next(
-            (a["label"] for a in agent_dict if a["value"] == agent_name), None
-        )
+        (a["label"] for a in agent_dict if a["value"] == agent_name), None
+    )
     map_img_path = os.path.join("static", "maps", map_name + ".png")
 
     # DBから定点情報読み込み
@@ -64,34 +65,62 @@ def view():
         return "情報を読み込めませんでした"
     lineups = c.fetchall()
     if len(lineups) == 0:
-        flash('検索結果が0件でした')
+        flash("検索結果が0件でした")
         return render_template("index.html", maps=map_dict, agents=agent_dict)
 
     # 取得情報をdictに変換
     keys = [
-        'lineup_id', 'map_name', 'agent_name', 'site',
-        'marker_x', 'marker_y', 'created_at'
+        "lineup_id",
+        "map_name",
+        "agent_name",
+        "site",
+        "effect_type",
     ]
     lineup_dict = [dict(zip(keys, item)) for item in lineups]
-    
+
     # 関連画像を取得
-    lineup_ids = [d['lineup_id'] for d in lineup_dict]
-    is_read = odb.read_lineup_image(c,lineup_ids)
+    lineup_ids = [d["lineup_id"] for d in lineup_dict]
+    is_read = odb.read_lineup_image(c, lineup_ids)
     if not is_read:
         return "情報を読み込めませんでした"
     linieup_images = c.fetchall()
+    
+    # ポイント情報を取得
+    is_read = odb.read_point_effects(c, lineup_ids)
+    if not is_read:
+        return "情報を読み込めませんでした"
+    point_effects = c.fetchall()
+    
+    # ベクトル情報を取得
+    is_read = odb.read_vector_effects(c, lineup_ids)
+    if not is_read:
+        return "情報を読み込めませんでした"
+    vector_effects = c.fetchall()
+    
     conn.close()
-    keys = [
-        'lineup_id', 'image_path', 'description'
-    ]
+    
+    # 関連画像をdictに変換
+    keys = ["lineup_id", "image_path", "description"]
     image_dict = [dict(zip(keys, item)) for item in linieup_images]
-    print(image_dict)
+    
+    # ポイント情報をdictに変換
+    keys = ["lineup_id", "x", "y"]
+    point_dict = [dict(zip(keys, item)) for item in point_effects]
+    
+    # ベクトル情報をdictに変換
+    keys = ["lineup_id", "start_x", "start_y", "end_x", "end_y"]
+    vector_dict = [dict(zip(keys, item)) for item in vector_effects]
+    
+    return render_template(
+        "view.html",
+        lineups=lineup_dict,
+        lineup_images=image_dict,
+        point_effects=point_dict,
+        vector_effects=vector_dict,
+        map_img_path=map_img_path,
+        agent_name_jp=agent_name_jp,
+    )
 
-    return render_template('view.html',
-                           lineups = lineup_dict,
-                           lineup_images = image_dict,
-                           map_img_path = map_img_path,
-                           agent_name_jp = agent_name_jp)
 
 # アップロード画面
 @app.route("/upload", methods=["GET", "POST"])

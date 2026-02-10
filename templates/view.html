@@ -56,6 +56,14 @@
             pointer-events: auto;
             cursor: pointer;
         }
+
+        /* ベクトル描画用Canvas */
+        #vectorCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -68,10 +76,10 @@
         <!-- マップ表示＆複数マーカー -->
         <div id="mapContainer">
             <img id="mapImage" src="{{ map_img_path }}" alt="マップ画像">
+            <canvas id="vectorCanvas"></canvas>
             {% for item in lineups %}
-            <span class="marker-dot" style="left: {{ item.marker_x }}%; top: {{ item.marker_y }}%;"
-                onclick="openModal({{ item.lineup_id }})"
-                title="{{ item.site }} / {{ item.agent_name }} | {{ item.created_at }}"></span>
+            <span class="marker-dot" data-lineup-id="{{ item.lineup_id }}" style="cursor: pointer;"
+                onclick="openModal({{ item.lineup_id }})" title="{{ item.site }}"></span>
             {% endfor %}
         </div>
     </div>
@@ -96,7 +104,84 @@
     <script>
         const lineups = {{ lineups | tojson }};
         const lineupImages = {{ lineup_images | tojson }};
+        const pointEffects = {{ point_effects | tojson }};
+        const vectorEffects = {{ vector_effects | tojson }};
         lineupImages.reverse();
+
+        // マップ画像読み込み後に矢印やマーカーを描画
+        window.addEventListener("DOMContentLoaded", () => {
+            const mapImage = document.getElementById('mapImage');
+            const canvas = document.getElementById('vectorCanvas');
+
+            mapImage.addEventListener('load', () => {
+                // Canvas のサイズをマップ画像に合わせる
+                canvas.width = mapImage.width;
+                canvas.height = mapImage.height;
+
+                // マーカーの位置を設定（pointの場合）
+                pointEffects.forEach(point => {
+                    const marker = document.querySelector(`[data-lineup-id="${point.lineup_id}"]`);
+                    if (marker) {
+                        const x = (point.x / 100) * mapImage.width;
+                        const y = (point.y / 100) * mapImage.height;
+                        marker.style.left = x + 'px';
+                        marker.style.top = y + 'px';
+                    }
+                });
+
+                // ベクトルの矢印を描画
+                vectorEffects.forEach(vector => {
+                    const x1 = (vector.start_x / 100) * mapImage.width;
+                    const y1 = (vector.start_y / 100) * mapImage.height;
+                    const x2 = (vector.end_x / 100) * mapImage.width;
+                    const y2 = (vector.end_y / 100) * mapImage.height;
+
+                    drawArrow(canvas, x1, y1, x2, y2);
+
+                    // ベクトル開始地点にマーカーを表示
+                    const marker = document.querySelector(`[data-lineup-id="${vector.lineup_id}"]`);
+                    if (marker) {
+                        marker.style.left = x1 + 'px';
+                        marker.style.top = y1 + 'px';
+                    }
+                });
+            });
+
+            // 画像がキャッシュから読み込まれている場合
+            if (mapImage.complete) {
+                mapImage.dispatchEvent(new Event('load'));
+            }
+        });
+
+        function drawArrow(canvas, x1, y1, x2, y2) {
+            const ctx = canvas.getContext('2d');
+            const headLen = 10;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+
+            // 矢印の線を描画
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+
+            // 矢印の先端を描画
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(
+                x2 - headLen * Math.cos(angle - Math.PI / 6),
+                y2 - headLen * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                x2 - headLen * Math.cos(angle + Math.PI / 6),
+                y2 - headLen * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        }
+
         function openModal(id) {
             const imgs = lineupImages.filter(img => img.lineup_id === id);
             const container = document.getElementById('modalContent');
