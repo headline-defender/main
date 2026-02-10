@@ -52,6 +52,30 @@
 			pointer-events: none;
 		}
 
+		#vectorCanvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			pointer-events: none;
+		}
+
+		/* ベクトル長さコントロール */
+		#vectorControls {
+			display: none;
+			background: rgba(0, 0, 0, 0.45);
+			padding: 8px;
+			border-radius: 6px;
+			color: #fff;
+			position: absolute;
+			right: 12px;
+			top: 12px;
+			z-index: 50;
+		}
+
+		#vectorControls input[type="range"] {
+			width: 180px;
+		}
+
 		form {
 			background: #2b2b2b;
 			padding: 15px;
@@ -116,6 +140,7 @@
 			gap: 0.75rem;
 			align-items: center;
 		}
+
 		/* マップ用は横幅を大きく使う */
 		#mapGrid {
 			display: grid;
@@ -131,6 +156,7 @@
 			gap: 0.6rem;
 			justify-items: center;
 		}
+
 		.select-item {
 			position: relative;
 			border-radius: 8px;
@@ -141,11 +167,38 @@
 			padding: 6px;
 			background: #222;
 		}
-		.select-item:hover { filter: brightness(1.15); transform: translateY(-3px); }
-		.select-item.active { outline: 3px solid #22d3ee; }
-		.select-item.map img { width: 100%; height: 140px; object-fit: cover; display: block; }
-		.select-item.agent img { width: 80px; height: 80px; object-fit: contain; background: #1e1f2f; border-radius: 8px; display:block; margin: 0 auto; }
-		.select-item .select-label { font-size: 0.85rem; color: #fff; margin-top: 6px; }
+
+		.select-item:hover {
+			filter: brightness(1.15);
+			transform: translateY(-3px);
+		}
+
+		.select-item.active {
+			outline: 3px solid #22d3ee;
+		}
+
+		.select-item.map img {
+			width: 100%;
+			height: 140px;
+			object-fit: cover;
+			display: block;
+		}
+
+		.select-item.agent img {
+			width: 80px;
+			height: 80px;
+			object-fit: contain;
+			background: #1e1f2f;
+			border-radius: 8px;
+			display: block;
+			margin: 0 auto;
+		}
+
+		.select-item .select-label {
+			font-size: 0.85rem;
+			color: #fff;
+			margin-top: 6px;
+		}
 	</style>
 </head>
 
@@ -157,7 +210,7 @@
 		</button>
 		<!-- マップ選択用エリア（アイコン） -->
 		<div id="mapSelector">
-			<label>マップ選択 <span class="required">  ※必須</span></label>
+			<label>マップ選択 <span class="required"> ※必須</span></label>
 			<div class="select-grid" id="mapGrid">
 				{% for map in maps %}
 				<div class="select-item map" data-value="{{ map.value }}" data-image="{{ map.detail_path }}">
@@ -170,13 +223,35 @@
 		<br>
 		<!-- マップ表示とマーカー用エリア -->
 		<div id="mapContainer">
-			<img id="mapImage" src="" onclick="getCoords(event)">
+			<img id="mapImage" src="" onclick="handleMapClick(event)">
+			<canvas id="vectorCanvas"></canvas>
+			<div id="vectorControls">
+				<button type="button" id="vectorClear" class="btn btn-sm btn-light" style="margin-left:8px;"
+					onclick="clearVector()">クリア</button>
+			</div>
 			<div id="marker"></div>
 		</div>
 
 		<!-- アップロードフォーム -->
 		<form method="POST" enctype="multipart/form-data">
 			<input type="hidden" name="map_name" id="map_name">
+			<div class="mb-3">
+				<label>配置タイプ <span class="required">※必須</span></label>
+				<div class="d-flex gap-3">
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="marker_type" value="vector" checked>
+						<label class="form-check-label">ベクトル</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" type="radio" name="marker_type" value="point">
+						<label class="form-check-label">ポイント</label>
+					</div>
+				</div>
+			</div>
+
+			<input type="hidden" name="vector_x2" id="markerX2">
+			<input type="hidden" name="vector_y2" id="markerY2">
+
 			<input type="hidden" name="marker_x" id="markerX" placeholder="X座標" readonly required>
 			<input type="hidden" name="marker_y" id="markerY" placeholder="Y座標" readonly required>
 			<!-- 以下、他の入力項目も追加 -->
@@ -229,6 +304,11 @@
 			document.getElementById('mapImage').src = item.dataset.image || ('/static/maps/' + item.dataset.value + '.png');
 			document.getElementById('markerX').value = '';
 			document.getElementById('markerY').value = '';
+			// clear any existing vector when map changes
+			clearVector();
+			// hide marker when map changes
+			const marker = document.getElementById('marker');
+			if (marker) marker.style.display = 'none';
 		});
 
 		// エージェント選択（hidden input に値を入れる）
@@ -258,6 +338,150 @@
 
 			document.getElementById('markerX').value = xRatio.toFixed(3);
 			document.getElementById('markerY').value = yRatio.toFixed(3);
+		}
+		let vectorStart = null;
+
+		function handleMapClick(event) {
+			const img = document.getElementById('mapImage');
+			const rect = img.getBoundingClientRect();
+
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
+
+			const xRatio = (x / img.width) * 100;
+			const yRatio = (y / img.height) * 100;
+
+			const type = document.querySelector('input[name="marker_type"]:checked').value;
+
+			if (type === 'point') {
+				setPoint(x, y, xRatio, yRatio);
+			} else {
+				setVector(x, y, xRatio, yRatio);
+			}
+		}
+
+		function setPoint(x, y, xr, yr) {
+			const marker = document.getElementById('marker');
+			marker.style.left = x + 'px';
+			marker.style.top = y + 'px';
+			marker.style.display = 'block';
+
+			document.getElementById('markerX').value = xr.toFixed(3);
+			document.getElementById('markerY').value = yr.toFixed(3);
+
+			clearVector();
+		}
+
+		function setVector(x, y, xr, yr) {
+			if (!vectorStart) {
+				vectorStart = { x, y, xr, yr };
+				// place initial marker for vector start (do not clear vectorStart)
+				const marker = document.getElementById('marker');
+				marker.style.left = x + 'px';
+				marker.style.top = y + 'px';
+				marker.style.display = 'block';
+				document.getElementById('markerX').value = xr.toFixed(3);
+				document.getElementById('markerY').value = yr.toFixed(3);
+				// ensure previous canvas cleared
+				const canvas = document.getElementById('vectorCanvas');
+				if (canvas) {
+					const ctx = canvas.getContext('2d');
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+				}
+				return;
+			}
+
+			// finalize vector and enable length control
+			const end = { x, y, xr, yr };
+			drawArrow(vectorStart.x, vectorStart.y, end.x, end.y);
+
+			document.getElementById('markerX').value = vectorStart.xr.toFixed(3);
+			document.getElementById('markerY').value = vectorStart.yr.toFixed(3);
+			document.getElementById('markerX2').value = end.xr.toFixed(3);
+			document.getElementById('markerY2').value = end.yr.toFixed(3);
+
+			// store base distance and angle on canvas for slider adjustments
+			const canvas = document.getElementById('vectorCanvas');
+			const dx = end.x - vectorStart.x;
+			const dy = end.y - vectorStart.y;
+			canvas.dataset.baseDistance = Math.hypot(dx, dy);
+			canvas.dataset.angle = Math.atan2(dy, dx);
+			canvas.dataset.startX = vectorStart.x;
+			canvas.dataset.startY = vectorStart.y;
+
+			// show controls
+			document.getElementById('vectorControls').style.display = 'block';
+
+			vectorStart = null;
+		}
+
+		function drawArrow(x1, y1, x2, y2) {
+			const canvas = document.getElementById('vectorCanvas');
+			const img = document.getElementById('mapImage');
+
+			canvas.width = img.width;
+			canvas.height = img.height;
+
+			const ctx = canvas.getContext('2d');
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			const headLen = 10;
+			const angle = Math.atan2(y2 - y1, x2 - x1);
+
+			ctx.strokeStyle = 'red';
+			ctx.lineWidth = 2;
+
+			ctx.beginPath();
+			ctx.moveTo(x1, y1);
+			ctx.lineTo(x2, y2);
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.moveTo(x2, y2);
+			ctx.lineTo(
+				x2 - headLen * Math.cos(angle - Math.PI / 6),
+				y2 - headLen * Math.sin(angle - Math.PI / 6)
+			);
+			ctx.lineTo(
+				x2 - headLen * Math.cos(angle + Math.PI / 6),
+				y2 - headLen * Math.sin(angle + Math.PI / 6)
+			);
+			ctx.closePath();
+			ctx.fillStyle = 'red';
+			ctx.fill();
+		}
+
+		document.getElementById('vectorClear').addEventListener('click', () => {
+			clearVector();
+			document.getElementById('vectorControls').style.display = 'none';
+		});
+
+		// マーカータイプ変更時にベクトル状態とマーカーをクリア
+		document.querySelectorAll('input[name="marker_type"]').forEach(r => {
+			r.addEventListener('change', (e) => {
+				clearVector();
+				const marker = document.getElementById('marker');
+				if (marker) marker.style.display = 'none';
+			});
+		});
+
+		function clearVector() {
+			const canvas = document.getElementById('vectorCanvas');
+			if (canvas) {
+				const ctx = canvas.getContext('2d');
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+			}
+			vectorStart = null;
+			// hide controls and clear stored data
+			const canvasEl = document.getElementById('vectorCanvas');
+			if (canvasEl) {
+				delete canvasEl.dataset.baseDistance;
+				delete canvasEl.dataset.angle;
+				delete canvasEl.dataset.startX;
+				delete canvasEl.dataset.startY;
+			}
+			const vc = document.getElementById('vectorControls');
+			if (vc) vc.style.display = 'none';
 		}
 	</script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

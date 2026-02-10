@@ -45,6 +45,13 @@
             display: none;
             pointer-events: none;
         }
+
+        #vectorCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
         
         form {
             background: #2b2b2b;
@@ -93,6 +100,7 @@
         <!-- マップ表示とマーカー用エリア -->
         <div id="mapContainer">
             <img id="mapImage" src="/static/maps/{{ form_data.map_name }}.png">
+            <canvas id="vectorCanvas"></canvas>
             <div id="marker"></div>
         </div>
         <form method="POST" action="{{ url_for('upload_confirm') }}">
@@ -103,6 +111,11 @@
             <!--座標-->
             <input type="hidden" name="marker_x" value="{{ form_data.marker_x }}" readonly>
             <input type="hidden" name="marker_y" value="{{ form_data.marker_y }}" readonly>
+            <input type="hidden" name="marker_type" value="{{ form_data.marker_type }}">
+            {% if form_data.vector_x2 %}
+            <input type="hidden" name="vector_x2" value="{{ form_data.vector_x2 }}">
+            <input type="hidden" name="vector_y2" value="{{ form_data.vector_y2 }}">
+            {% endif %}
 
             <label>エージェント:</label>
             <input type="text" value="{{ form_data.agent_name_jp}}" readonly>
@@ -141,22 +154,75 @@
         window.addEventListener("DOMContentLoaded", () => {
             const marker = document.getElementById("marker");
             const img = document.getElementById("mapImage");
+            const canvas = document.getElementById("vectorCanvas");
 
-            // Jinja2から受け取ったマーカー座標（100分率）
-            const xRatio = {{ form_data.marker_x | safe
-        }};
-        const yRatio = {{ form_data.marker_y | safe }};
+            // Jinja2から受け取ったデータ
+            const markerType = "{{ form_data.marker_type }}";
+            const xRatio = {{ form_data.marker_x | safe }};
+            const yRatio = {{ form_data.marker_y | safe }};
+            const vectorX2Ratio = {{ form_data.vector_x2 | safe if form_data.vector_x2 else "null" }};
+            const vectorY2Ratio = {{ form_data.vector_y2 | safe if form_data.vector_y2 else "null" }};
 
-        // 画像の読み込みが終わってから座標を計算
-        img.addEventListener("load", () => {
-            const x = (xRatio / 100) * img.width;
-            const y = (yRatio / 100) * img.height;
+            // 画像の読み込みが終わってから座標を計算して表示
+            img.addEventListener("load", () => {
+                const x = (xRatio / 100) * img.width;
+                const y = (yRatio / 100) * img.height;
 
-            marker.style.left = x + "px";
-            marker.style.top = y + "px";
-            marker.style.display = "block";
+                if (markerType === "point") {
+                    // ポイントの場合：マーカーを表示
+                    marker.style.left = x + "px";
+                    marker.style.top = y + "px";
+                    marker.style.display = "block";
+                } else if (markerType === "vector" && vectorX2Ratio !== null && vectorY2Ratio !== null) {
+                    // ベクトルの場合：矢印を描画
+                    const x2 = (vectorX2Ratio / 100) * img.width;
+                    const y2 = (vectorY2Ratio / 100) * img.height;
+
+                    // Canvasのサイズを画像に合わせて設定
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    // 矢印を描画
+                    drawArrow(x, y, x2, y2);
+
+                    // ベクトルの開始地点にマーカーを表示
+                    marker.style.left = x + "px";
+                    marker.style.top = y + "px";
+                    marker.style.display = "block";
+                }
+            });
+
+            function drawArrow(x1, y1, x2, y2) {
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const headLen = 10;
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+
+                // 矢印の線を描画
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                // 矢印の先端を描画
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(
+                    x2 - headLen * Math.cos(angle - Math.PI / 6),
+                    y2 - headLen * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.lineTo(
+                    x2 - headLen * Math.cos(angle + Math.PI / 6),
+                    y2 - headLen * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.closePath();
+                ctx.fillStyle = "red";
+                ctx.fill();
+            }
         });
-    });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
