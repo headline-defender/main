@@ -3,8 +3,7 @@ CREATE TABLE lineups (
     map_name TEXT NOT NULL,
     agent_name TEXT NOT NULL,
     site TEXT,
-    effect_type TEXT NOT NULL CHECK (effect_type IN ('point', 'vector')),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    effect_type TEXT NOT NULL CHECK (effect_type IN ('point', 'vector'))
 );
 
 CREATE TABLE lineup_point_effects (
@@ -12,7 +11,6 @@ CREATE TABLE lineup_point_effects (
     lineup_id INTEGER NOT NULL,
     x REAL NOT NULL,
     y REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lineup_id) REFERENCES lineups(id) ON DELETE CASCADE
 );
 
@@ -23,7 +21,6 @@ CREATE TABLE lineup_vector_effects (
     start_y REAL NOT NULL,
     end_x REAL NOT NULL,
     end_y REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (lineup_id) REFERENCES lineups(id) ON DELETE CASCADE
 );
 
