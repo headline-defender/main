@@ -28,11 +28,22 @@
             cursor: pointer;
             /* ポインターに統一 */
             margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-width: 100%;
+            max-height: 70vh;
+            overflow: hidden;
         }
         
         #mapImage {
-            /* 幅・高さは固定せず自然なサイズ */
             display: block;
+            max-width: 100%;
+            max-height: 70vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            margin: 0 auto;
         }
         
         #marker {
@@ -48,8 +59,6 @@
 
         #vectorCanvas {
             position: absolute;
-            top: 0;
-            left: 0;
             pointer-events: none;
         }
         
@@ -163,34 +172,52 @@
             const vectorX2Ratio = {{ form_data.vector_x2 | safe if form_data.vector_x2 else "null" }};
             const vectorY2Ratio = {{ form_data.vector_y2 | safe if form_data.vector_y2 else "null" }};
 
-            // 画像の読み込みが終わってから座標を計算して表示
-            img.addEventListener("load", () => {
-                const x = (xRatio / 100) * img.width;
-                const y = (yRatio / 100) * img.height;
+            // 画像ロード・リサイズ時にキャンバスとマーカーを更新
+            function updateOverlay() {
+                const container = document.getElementById('mapContainer');
+                if (!img || !canvas || !marker || !container) return;
 
-                if (markerType === "point") {
-                    // ポイントの場合：マーカーを表示
-                    marker.style.left = x + "px";
-                    marker.style.top = y + "px";
-                    marker.style.display = "block";
-                } else if (markerType === "vector" && vectorX2Ratio !== null && vectorY2Ratio !== null) {
-                    // ベクトルの場合：矢印を描画
-                    const x2 = (vectorX2Ratio / 100) * img.width;
-                    const y2 = (vectorY2Ratio / 100) * img.height;
+                const imgRect = img.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
 
-                    // Canvasのサイズを画像に合わせて設定
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                const imgLeft = imgRect.left - containerRect.left;
+                const imgTop = imgRect.top - containerRect.top;
+                const iw = imgRect.width || img.width || 0;
+                const ih = imgRect.height || img.height || 0;
 
-                    // 矢印を描画
-                    drawArrow(x, y, x2, y2);
+                // position canvas over the visible image
+                canvas.style.left = imgLeft + 'px';
+                canvas.style.top = imgTop + 'px';
+                canvas.width = Math.round(iw);
+                canvas.height = Math.round(ih);
+                canvas.style.width = iw + 'px';
+                canvas.style.height = ih + 'px';
 
-                    // ベクトルの開始地点にマーカーを表示
-                    marker.style.left = x + "px";
-                    marker.style.top = y + "px";
-                    marker.style.display = "block";
+                // marker position (relative to container)
+                const x = imgLeft + (xRatio / 100) * iw;
+                const y = imgTop + (yRatio / 100) * ih;
+
+                if (!isNaN(x) && !isNaN(y)) {
+                    marker.style.left = x + 'px';
+                    marker.style.top = y + 'px';
+                    marker.style.display = 'block';
+                } else {
+                    marker.style.display = 'none';
                 }
-            });
+
+                if (markerType === 'vector' && vectorX2Ratio !== null && vectorY2Ratio !== null) {
+                    const x2 = (vectorX2Ratio / 100) * iw;
+                    const y2 = (vectorY2Ratio / 100) * ih;
+                    drawArrow((x - imgLeft), (y - imgTop), x2, y2);
+                } else {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+
+            img.addEventListener('load', updateOverlay);
+            window.addEventListener('resize', updateOverlay);
+            document.addEventListener('DOMContentLoaded', updateOverlay);
 
             function drawArrow(x1, y1, x2, y2) {
                 const ctx = canvas.getContext("2d");

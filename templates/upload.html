@@ -34,11 +34,23 @@
 			cursor: pointer;
 			/* ポインターに統一 */
 			margin-bottom: 20px;
+			/* 中央に表示しつつ最大表示領域を制限 */
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			max-width: 100%;
+			max-height: 70vh;
+			overflow: hidden;
 		}
 
 		#mapImage {
-			/* 幅・高さは固定せず自然なサイズ */
 			display: block;
+			max-width: 100%;
+			max-height: 70vh;
+			width: auto;
+			height: auto;
+			object-fit: contain;
+			margin: 0 auto;
 		}
 
 		#marker {
@@ -54,8 +66,6 @@
 
 		#vectorCanvas {
 			position: absolute;
-			top: 0;
-			left: 0;
 			pointer-events: none;
 		}
 
@@ -328,8 +338,8 @@
 			const img = event.target;
 			const rect = img.getBoundingClientRect();
 
-			const xRatio = ((event.clientX - rect.left) / img.width) * 100;
-			const yRatio = ((event.clientY - rect.top) / img.height) * 100;
+			const xRatio = ((event.clientX - rect.left) / rect.width) * 100;
+			const yRatio = ((event.clientY - rect.top) / rect.height) * 100;
 
 			const marker = document.getElementById('marker');
 			marker.style.left = (event.clientX - rect.left) + 'px';
@@ -348,8 +358,8 @@
 			const x = event.clientX - rect.left;
 			const y = event.clientY - rect.top;
 
-			const xRatio = (x / img.width) * 100;
-			const yRatio = (y / img.height) * 100;
+			const xRatio = (x / rect.width) * 100;
+			const yRatio = (y / rect.height) * 100;
 
 			const type = document.querySelector('input[name="marker_type"]:checked').value;
 
@@ -419,8 +429,8 @@
 			const canvas = document.getElementById('vectorCanvas');
 			const img = document.getElementById('mapImage');
 
-			canvas.width = img.width;
-			canvas.height = img.height;
+			canvas.width = Math.round(img.clientWidth || img.width || 0);
+			canvas.height = Math.round(img.clientHeight || img.height || 0);
 
 			const ctx = canvas.getContext('2d');
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -483,6 +493,61 @@
 			const vc = document.getElementById('vectorControls');
 			if (vc) vc.style.display = 'none';
 		}
+
+		// Update canvas size and marker positions when image loads or window resizes
+		function updateOverlay() {
+			const img = document.getElementById('mapImage');
+			const canvas = document.getElementById('vectorCanvas');
+			const marker = document.getElementById('marker');
+			const container = document.getElementById('mapContainer');
+			if (!img || !canvas || !container) return;
+
+			const imgLeft = img.offsetLeft;
+			const imgTop = img.offsetTop;
+			const iw = img.clientWidth || img.width || 0;
+			const ih = img.clientHeight || img.height || 0;
+
+			canvas.style.left = imgLeft + 'px';
+			canvas.style.top = imgTop + 'px';
+			canvas.width = Math.round(iw);
+			canvas.height = Math.round(ih);
+			canvas.style.width = iw + 'px';
+			canvas.style.height = ih + 'px';
+
+			const mx = document.getElementById('markerX').value;
+			const my = document.getElementById('markerY').value;
+			if (mx && my) {
+				const lx = imgLeft + (iw * (parseFloat(mx) / 100));
+				const ty = imgTop + (ih * (parseFloat(my) / 100));
+				marker.style.left = lx + 'px';
+				marker.style.top = ty + 'px';
+				marker.style.display = 'block';
+			} else {
+				marker.style.display = 'none';
+			}
+
+			const mx2 = document.getElementById('markerX2').value;
+			const my2 = document.getElementById('markerY2').value;
+			if (mx && my && mx2 && my2) {
+				const x1 = iw * (parseFloat(mx) / 100);
+				const y1 = ih * (parseFloat(my) / 100);
+				const x2 = iw * (parseFloat(mx2) / 100);
+				const y2 = ih * (parseFloat(my2) / 100);
+				const ctx = canvas.getContext('2d');
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				drawArrow(x1, y1, x2, y2);
+				document.getElementById('vectorControls').style.display = 'block';
+			} else {
+				const ctx = canvas.getContext('2d');
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				document.getElementById('vectorControls').style.display = 'none';
+			}
+		}
+
+		// Attach overlay update on image load and window resize
+		document.getElementById('mapImage').addEventListener('load', updateOverlay);
+		window.addEventListener('resize', updateOverlay);
+		document.addEventListener('DOMContentLoaded', updateOverlay);
 	</script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
