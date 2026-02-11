@@ -3,6 +3,7 @@ KAY/O,KAY_O
 アストラ,Astra
 ヴァイパー,Viper
 ヴァイス,Vyse
+ヴィトー,Vito
 オーメン,Omen
 キルジョイ,Killjoy
 クローヴ,Clove
