@@ -64,6 +64,98 @@
             left: 0;
             pointer-events: none;
         }
+
+        /* 画像コンテナ */
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .image-container img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* 虫眼鏡アイコン */
+        .magnifying-glass {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #e0e0e0;
+        }
+
+        .magnifying-glass:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+            transform: scale(1.1);
+        }
+
+        .magnifying-glass::before {
+            content: '🔍';
+            font-size: 24px;
+        }
+
+        /* 画像拡大モーダル */
+        #imageModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #imageModal.show {
+            display: flex;
+        }
+
+        .image-modal-content {
+            position: relative;
+            width: 90vw;
+            height: 90vh;
+        }
+
+        .image-modal-content img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* クローズボタン */
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            font-weight: bold;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 2001;
+            background: none;
+            border: none;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .image-modal-close:hover {
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -79,11 +171,19 @@
             <canvas id="vectorCanvas"></canvas>
             {% for item in lineups %}
             <span class="marker-dot" data-lineup-id="{{ item.lineup_id }}" style="cursor: pointer;"
-                onclick="openModal({{ item.lineup_id }})" title="{{ item.site }}"></span>
+                onclick="openModal({{ item.lineup_id }})"
+                title="{{ item.site }}"></span>
             {% endfor %}
         </div>
     </div>
-    <!-- モーダル -->
+    <!-- 画像拡大モーダル -->
+    <div id="imageModal">
+        <button class="image-modal-close" onclick="closeImageModal()">×</button>
+        <div class="image-modal-content">
+            <img id="expandedImage" src="" alt="拡大画像">
+        </div>
+    </div>
+    <!-- マーカーモーダル（既存） -->
     <div class="modal fade" id="markerModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content bg-dark text-light">
@@ -195,7 +295,10 @@
                 const div = document.createElement('div');
                 div.classList.add('mb-3');
                 div.innerHTML = `
-                <img src="${img.image_path}" class="img-fluid rounded mb-2" alt="">
+                <div class="image-container">
+                    <img src="${img.image_path}" class="img-fluid rounded" alt="">
+                    <div class="magnifying-glass" onclick="expandImage('${img.image_path}', event)"></div>
+                </div>
                 <p>${img.description.replace(/(\r\n|\n|\r)/g, '<br>')}</p>
                 `;
                 container.appendChild(div);
@@ -203,6 +306,33 @@
             const modal = new bootstrap.Modal(document.getElementById('markerModal'));
             modal.show();
         }
+
+        function expandImage(imagePath, event) {
+            event.stopPropagation();
+            const modal = document.getElementById('imageModal');
+            const expandedImage = document.getElementById('expandedImage');
+            expandedImage.src = imagePath;
+            modal.classList.add('show');
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('show');
+        }
+
+        // モーダル外側クリックで閉じる
+        document.getElementById('imageModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeImageModal();
+            }
+        });
+
+        // Escキーでモーダルを閉じる
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeImageModal();
+            }
+        });
     </script>
 </body>
 
